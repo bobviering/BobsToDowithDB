@@ -1,810 +1,543 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
-type Priority = 'High' | 'Medium' | 'Low'
-type PresetList = 'Home' | 'Work' | 'Personal' | 'Errands' | 'Health' | 'Finance' | 'Other'
-type SortMode = 'date' | 'priority' | 'list'
-type ViewMode = 'list' | 'calendar'
-
-type TaskRecord = {
+type Task = {
   id: string
   user_id: string
   title: string
-  notes: string | null
   due_date: string | null
-  priority: Priority
-  list_name: string
   completed: boolean
   created_at: string
-  updated_at: string
+  updated_at?: string | null
+  priority?: string | null
+  list_name?: string | null
+  notes?: string | null
 }
 
-type DraftTask = {
+type EditorState = {
   title: string
-  notes: string
   due_date: string
-  priority: Priority
-  presetList: PresetList
-  customList: string
+  priority: string
+  list_name: string
+  notes: string
+  completed: boolean
 }
 
-const DEFAULT_DRAFT: DraftTask = {
+const emptyEditor: EditorState = {
   title: '',
-  notes: '',
   due_date: '',
   priority: 'Medium',
-  presetList: 'Home',
-  customList: ''
+  list_name: 'Personal',
+  notes: '',
+  completed: false,
 }
 
-const PRESET_LISTS: PresetList[] = ['Home', 'Work', 'Personal', 'Errands', 'Health', 'Finance', 'Other']
-const PRIORITY_ORDER: Record<Priority, number> = { High: 0, Medium: 1, Low: 2 }
-const PRIORITY_STYLES: Record<Priority, string> = {
-  High: 'border-rose-300 bg-rose-50 text-rose-700',
-  Medium: 'border-amber-300 bg-amber-50 text-amber-700',
-  Low: 'border-slate-300 bg-slate-50 text-slate-700'
-}
+export default function TaskDashboard({ session }: { session: Session }) {
+  const supabase = createClient()
 
-export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecord[]; email: string }) {
-  const supabase = useMemo(() => createClient(), [])
-  const [tasks, setTasks] = useState<TaskRecord[]>(initialTasks)
-  const [draft, setDraft] = useState<DraftTask>(DEFAULT_DRAFT)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [listFilter, setListFilter] = useState('all')
-  const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all')
-  const [sortMode, setSortMode] = useState<SortMode>('date')
-  const [showCompleted, setShowCompleted] = useState(true)
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [calendarDate, setCalendarDate] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1)
-  })
-  const [statusMessage, setStatusMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
-  const [reminderDismissedKey, setReminderDismissedKey] = useState<string | null>(null)
-  const [reminderOpen, setReminderOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [status, setStatus] = useState('')
+  const [showTodayOnly, setShowTodayOnly] = useState(false)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [editor, setEditor] = useState<EditorState>(emptyEditor)
+
+  const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
-    const savedSort = window.localStorage.getItem('todo-cloud-sort-mode') as SortMode | null
-    if (savedSort && ['date', 'priority', 'list'].includes(savedSort)) {
-      setSortMode(savedSort)
-    }
+    fetchTasks()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.user.id])
 
-    const savedView = window.localStorage.getItem('todo-cloud-view-mode') as ViewMode | null
-    if (savedView && ['list', 'calendar'].includes(savedView)) {
-      setViewMode(savedView)
-    }
+  function flashStatus(message: string) {
+    setStatus(message)
+    window.clearTimeout((window as any).__todoStatusTimer)
+    ;(window as any).__todoStatusTimer = window.setTimeout(() => {
+      setStatus('')
+    }, 1800)
+  }
 
-    const dismissed = window.localStorage.getItem('todo-cloud-reminder-dismissed')
-    if (dismissed) {
-      setReminderDismissedKey(dismissed)
-    }
-  }, [])
+  async function fetchTasks() {
+    setLoading(true)
+    setError('')
 
-  useEffect(() => {
-    window.localStorage.setItem('todo-cloud-sort-mode', sortMode)
-  }, [sortMode])
-
-  useEffect(() => {
-    window.localStorage.setItem('todo-cloud-view-mode', viewMode)
-  }, [viewMode])
-
-  useEffect(() => {
-    if (viewMode === 'calendar') {
-      const now = new Date()
-      setCalendarDate(new Date(now.getFullYear(), now.getMonth(), 1))
-    }
-  }, [viewMode])
-
-  useEffect(() => {
-    if (!statusMessage) return
-    const timer = window.setTimeout(() => setStatusMessage(''), 2500)
-    return () => window.clearTimeout(timer)
-  }, [statusMessage])
-
-  useEffect(() => {
-    if (!errorMessage) return
-    const timer = window.setTimeout(() => setErrorMessage(''), 3200)
-    return () => window.clearTimeout(timer)
-  }, [errorMessage])
-
-  const todayKey = new Date().toISOString().slice(0, 10)
-  const reminderTasks = useMemo(() => {
-    return tasks
-      .filter((task) => !task.completed && !!task.due_date)
-      .filter((task) => {
-        const due = task.due_date!
-        return due <= todayKey
-      })
-      .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
-  }, [tasks, todayKey])
-
-  useEffect(() => {
-    const shouldShow = reminderTasks.length > 0 && reminderDismissedKey !== todayKey
-    setReminderOpen(shouldShow)
-  }, [reminderDismissedKey, reminderTasks.length, todayKey])
-
-  const availableLists = useMemo(() => {
-    const values = new Set<string>(PRESET_LISTS.filter((item) => item !== 'Other'))
-    tasks.forEach((task) => values.add(task.list_name))
-    return ['all', ...Array.from(values).sort((a, b) => a.localeCompare(b))]
-  }, [tasks])
-
-  const filteredTasks = useMemo(() => {
-    const searchLower = search.trim().toLowerCase()
-    const result = tasks.filter((task) => {
-      const matchesSearch =
-        !searchLower ||
-        task.title.toLowerCase().includes(searchLower) ||
-        (task.notes ?? '').toLowerCase().includes(searchLower)
-      const matchesList = listFilter === 'all' || task.list_name === listFilter
-      const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter
-      const matchesCompleted = showCompleted || !task.completed
-      return matchesSearch && matchesList && matchesPriority && matchesCompleted
-    })
-
-    return result.sort((a, b) => {
-      if (sortMode === 'priority') {
-        return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] || (a.due_date ?? '9999-99-99').localeCompare(b.due_date ?? '9999-99-99')
-      }
-
-      if (sortMode === 'list') {
-        return a.list_name.localeCompare(b.list_name) || (a.due_date ?? '9999-99-99').localeCompare(b.due_date ?? '9999-99-99')
-      }
-
-      const aRank = a.due_date ? a.due_date : '9999-99-99'
-      const bRank = b.due_date ? b.due_date : '9999-99-99'
-      return aRank.localeCompare(bRank) || PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
-    })
-  }, [tasks, search, listFilter, priorityFilter, showCompleted, sortMode])
-
-  const calendarMatrix = useMemo(() => {
-    const monthStart = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1)
-    const monthEnd = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0)
-    const startOffset = monthStart.getDay()
-    const totalCells = Math.ceil((startOffset + monthEnd.getDate()) / 7) * 7
-
-    const cells = Array.from({ length: totalCells }, (_, index) => {
-      const dayNumber = index - startOffset + 1
-      const date = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), dayNumber)
-      const dateKey = date.toISOString().slice(0, 10)
-      const dayTasks = filteredTasks.filter((task) => task.due_date === dateKey)
-      return {
-        date,
-        dateKey,
-        inMonth: date.getMonth() === calendarDate.getMonth(),
-        tasks: dayTasks
-      }
-    })
-
-    const rows = [] as typeof cells[]
-    for (let i = 0; i < cells.length; i += 7) {
-      rows.push(cells.slice(i, i + 7))
-    }
-    return rows
-  }, [calendarDate, filteredTasks])
-
-  async function refreshTasks() {
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
+      .eq('user_id', session.user.id)
+      .order('completed', { ascending: true })
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
 
     if (error) {
-      setErrorMessage(error.message)
+      setError('Failed to load tasks.')
+    } else {
+      setTasks((data as Task[]) || [])
+    }
+
+    setLoading(false)
+  }
+
+  function loadTaskIntoEditor(task: Task) {
+    setSelectedTaskId(task.id)
+    setEditor({
+      title: task.title || '',
+      due_date: task.due_date || '',
+      priority: task.priority || 'Medium',
+      list_name: task.list_name || 'Personal',
+      notes: task.notes || '',
+      completed: task.completed,
+    })
+    setError('')
+  }
+
+  function resetEditor() {
+    setSelectedTaskId(null)
+    setEditor(emptyEditor)
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    const trimmedTitle = editor.title.trim()
+    if (!trimmedTitle) {
+      setError('Please enter a task title.')
       return
     }
 
-    setTasks((data ?? []) as TaskRecord[])
-  }
-
-  function resetDraft() {
-    setDraft(DEFAULT_DRAFT)
-    setEditingId(null)
-  }
-
-  function draftListValue() {
-    return draft.presetList === 'Other' ? draft.customList.trim() : draft.presetList
-  }
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setErrorMessage('')
-
-    const listName = draftListValue()
-    if (!draft.title.trim()) {
-      setErrorMessage('Task title is required.')
-      return
-    }
-    if (!listName) {
-      setErrorMessage('Pick a list or name one in Other.')
-      return
-    }
+    setSaving(true)
 
     const payload = {
-      title: draft.title.trim(),
-      notes: draft.notes.trim() || null,
-      due_date: draft.due_date || null,
-      priority: draft.priority,
-      list_name: listName,
-      updated_at: new Date().toISOString()
+      title: trimmedTitle,
+      due_date: editor.due_date || null,
+      priority: editor.priority || null,
+      list_name: editor.list_name || null,
+      notes: editor.notes || null,
+      completed: editor.completed,
+      updated_at: new Date().toISOString(),
     }
 
-    if (editingId) {
-      const { error } = await supabase.from('tasks').update(payload).eq('id', editingId)
+    if (selectedTaskId) {
+      const { error } = await supabase
+        .from('tasks')
+        .update(payload)
+        .eq('id', selectedTaskId)
+        .eq('user_id', session.user.id)
+
       if (error) {
-        setErrorMessage(error.message)
-        return
+        setError('Could not update task.')
+      } else {
+        flashStatus('Task updated.')
+        await fetchTasks()
       }
-      setStatusMessage('Task updated.')
     } else {
-      const { error } = await supabase.from('tasks').insert(payload)
+      const { error } = await supabase.from('tasks').insert({
+        ...payload,
+        user_id: session.user.id,
+        completed: false,
+      })
+
       if (error) {
-        setErrorMessage(error.message)
-        return
+        setError('Could not add task.')
+      } else {
+        flashStatus('Task saved.')
+        resetEditor()
+        await fetchTasks()
       }
-      setStatusMessage('Task added.')
     }
 
-    resetDraft()
-    await refreshTasks()
+    setSaving(false)
   }
 
-  function startEdit(task: TaskRecord) {
-    const presetList = PRESET_LISTS.includes(task.list_name as PresetList)
-      ? (task.list_name as PresetList)
-      : 'Other'
+  async function toggleComplete(task: Task) {
+    setSaving(true)
+    setError('')
 
-    setDraft({
-      title: task.title,
-      notes: task.notes ?? '',
-      due_date: task.due_date ?? '',
-      priority: task.priority,
-      presetList,
-      customList: presetList === 'Other' ? task.list_name : ''
-    })
-    setEditingId(task.id)
-    setViewMode('list')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  async function toggleTask(task: TaskRecord) {
     const { error } = await supabase
       .from('tasks')
-      .update({ completed: !task.completed, updated_at: new Date().toISOString() })
+      .update({
+        completed: !task.completed,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', task.id)
+      .eq('user_id', session.user.id)
 
     if (error) {
-      setErrorMessage(error.message)
-      return
+      setError('Could not update task status.')
+    } else {
+      flashStatus(task.completed ? 'Task reopened.' : 'Task completed.')
+      if (selectedTaskId === task.id) {
+        setEditor((prev) => ({ ...prev, completed: !task.completed }))
+      }
+      await fetchTasks()
     }
 
-    setStatusMessage(task.completed ? 'Task reopened.' : 'Task completed.')
-    await refreshTasks()
+    setSaving(false)
   }
 
-  async function deleteTask(id: string) {
+  async function deleteTask(taskId: string) {
     const confirmed = window.confirm('Delete this task?')
     if (!confirmed) return
 
-    const { error } = await supabase.from('tasks').delete().eq('id', id)
+    setSaving(true)
+    setError('')
+
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId)
+      .eq('user_id', session.user.id)
+
     if (error) {
-      setErrorMessage(error.message)
-      return
+      setError('Could not delete task.')
+    } else {
+      flashStatus('Task deleted.')
+      if (selectedTaskId === taskId) resetEditor()
+      await fetchTasks()
     }
 
-    setStatusMessage('Task deleted.')
-    await refreshTasks()
+    setSaving(false)
   }
 
-  async function clearCompleted() {
-    const confirmed = window.confirm('Delete all completed tasks?')
-    if (!confirmed) return
-
-    const { error } = await supabase.from('tasks').delete().eq('completed', true)
-    if (error) {
-      setErrorMessage(error.message)
-      return
-    }
-
-    setStatusMessage('Completed tasks cleared.')
-    await refreshTasks()
-  }
-
-  async function deleteAllTasks() {
-    const confirmed = window.confirm('Delete every task in your account? This cannot be undone.')
-    if (!confirmed) return
-
-    const { error } = await supabase.from('tasks').delete().neq('id', '')
-    if (error) {
-      setErrorMessage(error.message)
-      return
-    }
-
-    setStatusMessage('All tasks deleted.')
-    await refreshTasks()
-  }
-
-  function exportBackup() {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      tasks
-    }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    link.href = url
-    link.download = `todo-cloud-backup-${timestamp}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    setStatusMessage('Backup downloaded. Check your browser save location.')
-  }
-
-  async function importBackup(file: File) {
-    try {
-      const text = await file.text()
-      const parsed = JSON.parse(text)
-      const incoming = Array.isArray(parsed) ? parsed : parsed.tasks
-      if (!Array.isArray(incoming)) {
-        throw new Error('This file does not look like a task backup.')
-      }
-
-      const rows = incoming
-        .filter((row) => row && typeof row.title === 'string')
-        .map((row) => ({
-          title: String(row.title).trim(),
-          notes: row.notes ? String(row.notes) : null,
-          due_date: row.due_date ? String(row.due_date) : null,
-          priority: ['High', 'Medium', 'Low'].includes(row.priority) ? row.priority : 'Medium',
-          list_name: row.list_name ? String(row.list_name) : 'Home',
-          completed: Boolean(row.completed)
-        }))
-        .filter((row) => row.title)
-
-      if (!rows.length) {
-        throw new Error('No valid tasks found in that file.')
-      }
-
-      const { error } = await supabase.from('tasks').insert(rows)
-      if (error) {
-        throw error
-      }
-
-      setStatusMessage(`Imported ${rows.length} task${rows.length === 1 ? '' : 's'}.`)
-      await refreshTasks()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Import failed.'
-      setErrorMessage(message)
-    }
-  }
-
-  async function signOut() {
+  async function handleSignOut() {
     await supabase.auth.signOut()
-    window.location.href = '/'
   }
 
-  function dismissReminderForToday() {
-    window.localStorage.setItem('todo-cloud-reminder-dismissed', todayKey)
-    setReminderDismissedKey(todayKey)
-    setReminderOpen(false)
-  }
+  const filteredTasks = useMemo(() => {
+    if (!showTodayOnly) return tasks
+    return tasks.filter((task) => !task.completed && task.due_date === today)
+  }, [tasks, showTodayOnly, today])
 
-  const monthLabel = calendarDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  const todayCount = tasks.filter(
+    (task) => !task.completed && task.due_date === today
+  ).length
+
+  const lastUpdated =
+    tasks.length > 0
+      ? [...tasks]
+          .map((task) => task.updated_at || task.created_at)
+          .filter(Boolean)
+          .sort()
+          .reverse()[0]
+      : null
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-      <header className="mb-6 rounded-[28px] border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Todo Cloud</p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">Your tasks, anywhere</h1>
-            <p className="mt-2 text-sm text-slate-600">Signed in as {email}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={`rounded-2xl px-4 py-2 text-sm font-semibold ${viewMode === 'list' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}
-            >
-              List view
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('calendar')}
-              className={`rounded-2xl px-4 py-2 text-sm font-semibold ${viewMode === 'calendar' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}
-            >
-              Calendar view
-            </button>
-            <button
-              type="button"
-              onClick={exportBackup}
-              className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
-            >
-              Export backup
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
-            >
-              Import backup
-            </button>
-            <button
-              type="button"
-              onClick={signOut}
-              className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {reminderOpen ? (
-        <div className="mb-6 rounded-[28px] border border-amber-200 bg-amber-50 p-5 shadow-soft">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-5xl p-4 sm:p-6">
+        <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-amber-900">Due now</h2>
-              <p className="mt-1 text-sm text-amber-800">You have {reminderTasks.length} open task{reminderTasks.length === 1 ? '' : 's'} due today or overdue.</p>
-              <ul className="mt-3 space-y-2 text-sm text-amber-900">
-                {reminderTasks.slice(0, 5).map((task) => (
-                  <li key={task.id}>
-                    <span className="font-semibold">{task.title}</span>
-                    {task.due_date ? <span className="ml-2 text-amber-700">({formatDate(task.due_date)})</span> : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={() => setReminderOpen(false)}
-                className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-amber-900"
-              >
-                X
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className="rounded-2xl bg-amber-900 px-4 py-2 text-sm font-semibold text-white"
-              >
-                Show tasks
-              </button>
-              <button
-                type="button"
-                onClick={dismissReminderForToday}
-                className="rounded-2xl bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900"
-              >
-                Dismiss today
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {(statusMessage || errorMessage) ? (
-        <div className="mb-6 flex flex-col gap-2">
-          {statusMessage ? <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</div> : null}
-          {errorMessage ? <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div> : null}
-        </div>
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
-        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">{editingId ? 'Edit task' : 'Add task'}</h2>
-              <p className="mt-1 text-sm text-slate-500">Simple and fast. Keep the core clean.</p>
-            </div>
-            {editingId ? (
-              <button type="button" onClick={resetDraft} className="rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
-                Cancel
-              </button>
-            ) : null}
-          </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">Task</span>
-              <input
-                value={draft.title}
-                onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-                placeholder="Pay water bill"
-                required
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-700">Notes</span>
-              <textarea
-                value={draft.notes}
-                onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
-                className="min-h-28 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-                placeholder="Optional details"
-              />
-            </label>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700">Due date</span>
-                <input
-                  type="date"
-                  value={draft.due_date}
-                  onChange={(event) => setDraft((current) => ({ ...current, due_date: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700">Priority</span>
-                <select
-                  value={draft.priority}
-                  onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value as Priority }))}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-                >
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </label>
+              <h1 className="text-2xl font-semibold text-slate-900">My Tasks</h1>
+              <p className="mt-1 text-sm text-slate-600">
+                Signed in as {session.user.email}
+              </p>
+              {lastUpdated ? (
+                <p className="mt-1 text-xs text-slate-500">
+                  Last updated: {new Date(lastUpdated).toLocaleString()}
+                </p>
+              ) : null}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700">List</span>
-                <select
-                  value={draft.presetList}
-                  onChange={(event) => setDraft((current) => ({ ...current, presetList: event.target.value as PresetList }))}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-                >
-                  {PRESET_LISTS.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {draft.presetList === 'Other' ? (
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700">Custom list name</span>
-                  <input
-                    value={draft.customList}
-                    onChange={(event) => setDraft((current) => ({ ...current, customList: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-                    placeholder="Projects"
-                  />
-                </label>
-              ) : (
-                <div className="rounded-[22px] bg-slate-50 p-4 text-sm text-slate-500">
-                  Keeping lists structured makes filtering much cleaner.
-                </div>
-              )}
-            </div>
-
-            <button type="submit" className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white">
-              {editingId ? 'Save changes' : 'Add task'}
-            </button>
-          </form>
-        </section>
-
-        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Tasks</h2>
-              <p className="mt-1 text-sm text-slate-500">Search, sort, and filter without clutter.</p>
-            </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={clearCompleted} className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-                Clear completed
+              <button
+                type="button"
+                onClick={() => setShowTodayOnly((prev) => !prev)}
+                className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
+                  showTodayOnly
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                }`}
+              >
+                {showTodayOnly
+                  ? 'Show All Tasks'
+                  : `Today Focus${todayCount ? ` (${todayCount})` : ''}`}
+              </button>
+
+              <button
+                type="button"
+                onClick={resetEditor}
+                className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-200"
+              >
+                New Task
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-200"
+              >
+                Log Out
               </button>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-5">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search tasks"
-              className="rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 lg:col-span-2"
-            />
-
-            <select
-              value={listFilter}
-              onChange={(event) => setListFilter(event.target.value)}
-              className="rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-            >
-              {availableLists.map((item) => (
-                <option key={item} value={item}>
-                  {item === 'all' ? 'All lists' : item}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={priorityFilter}
-              onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}
-              className="rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-            >
-              <option value="all">All priorities</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-
-            <select
-              value={sortMode}
-              onChange={(event) => setSortMode(event.target.value as SortMode)}
-              className="rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-            >
-              <option value="date">Sort by date</option>
-              <option value="priority">Sort by priority</option>
-              <option value="list">Sort by list</option>
-            </select>
+          <div className="mt-4 min-h-6">
+            {loading && <p className="text-sm text-slate-600">Loading tasks...</p>}
+            {!loading && saving && <p className="text-sm text-emerald-700">Saving...</p>}
+            {!loading && !!status && <p className="text-sm text-emerald-700">{status}</p>}
+            {!!error && <p className="text-sm text-red-600">{error}</p>}
           </div>
+        </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
-            <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={showCompleted} onChange={(event) => setShowCompleted(event.target.checked)} />
-              Show completed tasks
-            </label>
-            <p>{filteredTasks.length} task{filteredTasks.length === 1 ? '' : 's'} shown</p>
-          </div>
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {showTodayOnly ? 'Today' : 'All Tasks'}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {filteredTasks.length} item{filteredTasks.length === 1 ? '' : 's'}
+              </p>
+            </div>
 
-          {viewMode === 'list' ? (
-            <div className="mt-5 space-y-3">
-              {filteredTasks.length === 0 ? (
-                <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
-                  No tasks match your current filters.
-                </div>
-              ) : (
-                filteredTasks.map((task) => (
-                  <article
-                    key={task.id}
-                    className={`rounded-[24px] border p-4 transition ${task.completed ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white'}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <button
-                        type="button"
-                        onClick={() => toggleTask(task)}
-                        className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${task.completed ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-400 bg-white text-transparent'}`}
-                        aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
-                      >
-                        ✓
-                      </button>
+            {loading ? null : filteredTasks.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-slate-500">
+                {showTodayOnly
+                  ? 'Nothing due today.'
+                  : 'No tasks yet. Add your first one on the right.'}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredTasks.map((task) => {
+                  const isSelected = selectedTaskId === task.id
+                  const isDueToday = task.due_date === today && !task.completed
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <h3 className={`text-base font-semibold ${task.completed ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</h3>
-                            {task.notes ? <p className={`mt-1 text-sm ${task.completed ? 'text-slate-400' : 'text-slate-600'}`}>{task.notes}</p> : null}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${PRIORITY_STYLES[task.priority]}`}>{task.priority}</span>
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">{task.list_name}</span>
-                          </div>
-                        </div>
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={() => loadTaskIntoEditor(task)}
+                      className={`cursor-pointer rounded-2xl border p-4 transition ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50 shadow-sm'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleComplete(task)
+                          }}
+                          className={`mt-0.5 h-6 w-6 shrink-0 rounded-full border-2 transition ${
+                            task.completed
+                              ? 'border-emerald-600 bg-emerald-600'
+                              : 'border-slate-400 bg-white hover:border-slate-600'
+                          }`}
+                        >
+                          {task.completed ? (
+                            <span className="block text-center text-xs text-white">✓</span>
+                          ) : null}
+                        </button>
 
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                          <div className="text-sm text-slate-500">
-                            {task.due_date ? `Due ${formatDate(task.due_date)}` : 'No due date'}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => startEdit(task)} className="rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
-                              Edit
-                            </button>
-                            <button type="button" onClick={() => deleteTask(task.id)} className="rounded-2xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <h3
+                                className={`text-base font-medium ${
+                                  task.completed
+                                    ? 'text-slate-400 line-through'
+                                    : 'text-slate-900'
+                                }`}
+                              >
+                                {task.title}
+                              </h3>
+
+                              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                {task.list_name ? (
+                                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                                    {task.list_name}
+                                  </span>
+                                ) : null}
+
+                                {task.priority ? (
+                                  <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">
+                                    {task.priority}
+                                  </span>
+                                ) : null}
+
+                                {task.due_date ? (
+                                  <span
+                                    className={`rounded-full px-2.5 py-1 ${
+                                      isDueToday
+                                        ? 'bg-red-100 text-red-700'
+                                        : 'bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    Due {task.due_date}
+                                  </span>
+                                ) : null}
+                              </div>
+
+                              {task.notes ? (
+                                <p className="mt-2 line-clamp-2 text-sm text-slate-600">
+                                  {task.notes}
+                                </p>
+                              ) : null}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteTask(task.id)
+                              }}
+                              className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700 hover:bg-red-50 hover:text-red-700"
+                            >
                               Delete
                             </button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </article>
-                ))
-              )}
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
+          <section
+            className={`rounded-2xl bg-white p-4 shadow-sm ring-1 transition sm:p-6 ${
+              selectedTaskId ? 'ring-blue-400 shadow-md' : 'ring-slate-200'
+            }`}
+          >
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {selectedTaskId ? 'Edit Task' : 'Add Task'}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {selectedTaskId
+                  ? 'You are editing the selected task. Make changes and save.'
+                  : 'Create a new task here.'}
+              </p>
             </div>
-          ) : (
-            <div className="mt-5">
-              <div className="mb-4 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setCalendarDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
-                  className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
+
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Title
+                </label>
+                <input
+                  value={editor.title}
+                  onChange={(e) =>
+                    setEditor((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none ring-0 transition focus:border-blue-500"
+                  placeholder="Enter task title"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editor.due_date}
+                    onChange={(e) =>
+                      setEditor((prev) => ({ ...prev, due_date: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Priority
+                  </label>
+                  <select
+                    value={editor.priority}
+                    onChange={(e) =>
+                      setEditor((prev) => ({ ...prev, priority: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-blue-500"
+                  >
+                    <option>High</option>
+                    <option>Medium</option>
+                    <option>Low</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  List
+                </label>
+                <select
+                  value={editor.list_name}
+                  onChange={(e) =>
+                    setEditor((prev) => ({ ...prev, list_name: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-blue-500"
                 >
-                  Previous
-                </button>
-                <h3 className="text-lg font-bold text-slate-900">{monthLabel}</h3>
+                  <option>Home</option>
+                  <option>Work</option>
+                  <option>Personal</option>
+                  <option>Errands</option>
+                  <option>Health</option>
+                  <option>Finance</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Notes
+                </label>
+                <textarea
+                  value={editor.notes}
+                  onChange={(e) =>
+                    setEditor((prev) => ({ ...prev, notes: e.target.value }))
+                  }
+                  rows={4}
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-blue-500"
+                  placeholder="Optional notes"
+                />
+              </div>
+
+              {selectedTaskId ? (
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={editor.completed}
+                    onChange={(e) =>
+                      setEditor((prev) => ({ ...prev, completed: e.target.checked }))
+                    }
+                  />
+                  Mark as completed
+                </label>
+              ) : null}
+
+              <div className="flex flex-wrap gap-3">
                 <button
-                  type="button"
-                  onClick={() => setCalendarDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
-                  className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
                 >
-                  Next
+                  {selectedTaskId ? 'Save Changes' : 'Add Task'}
                 </button>
-              </div>
 
-              <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="pb-2">{day}</div>
-                ))}
+                {selectedTaskId ? (
+                  <button
+                    type="button"
+                    onClick={resetEditor}
+                    className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-medium text-slate-800 hover:bg-slate-200"
+                  >
+                    Cancel Edit
+                  </button>
+                ) : null}
               </div>
-
-              <div className="space-y-2">
-                {calendarMatrix.map((row, rowIndex) => (
-                  <div key={rowIndex} className="grid grid-cols-7 gap-2">
-                    {row.map((cell) => {
-                      const isToday = cell.dateKey === todayKey
-                      return (
-                        <div
-                          key={cell.dateKey}
-                          className={`min-h-32 rounded-[20px] border p-2 ${cell.inMonth ? 'border-slate-200 bg-slate-50' : 'border-slate-100 bg-slate-100 text-slate-400'}`}
-                        >
-                          <div className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${isToday ? 'bg-slate-900 text-white' : 'text-slate-700'}`}>
-                            {cell.date.getDate()}
-                          </div>
-                          <div className="space-y-1">
-                            {cell.tasks.slice(0, 3).map((task) => (
-                              <button
-                                key={task.id}
-                                type="button"
-                                onClick={() => startEdit(task)}
-                                className={`block w-full rounded-xl border px-2 py-1 text-left text-xs font-medium ${PRIORITY_STYLES[task.priority]} ${task.completed ? 'opacity-60 line-through' : ''}`}
-                              >
-                                {task.title}
-                              </button>
-                            ))}
-                            {cell.tasks.length > 3 ? <div className="text-xs text-slate-500">+{cell.tasks.length - 3} more</div> : null}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-8 border-t border-slate-200 pt-6">
-            <button type="button" onClick={deleteAllTasks} className="text-sm font-semibold text-slate-400 hover:text-rose-700">
-              Delete all tasks
-            </button>
-          </div>
-        </section>
+            </form>
+          </section>
+        </div>
       </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json"
-        className="hidden"
-        onChange={async (event) => {
-          const file = event.target.files?.[0]
-          if (file) {
-            await importBackup(file)
-          }
-          event.currentTarget.value = ''
-        }}
-      />
-    </div>
+    </main>
   )
-}
-
-function formatDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
 }
