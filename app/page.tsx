@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 
 export default function Home() {
   const supabase = createClient()
-  const [tasks, setTasks] = useState([])
+  const [tasks, setTasks] = useState<Task[]>([])  
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -15,6 +15,14 @@ export default function Home() {
     fetchTasks()
   }, [])
 
+  type Task = {
+  id: string
+  title: string
+  due_date: string | null
+  completed: boolean
+  created_at: string
+}
+    
   async function fetchTasks() {
     setLoading(true)
     const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false })
