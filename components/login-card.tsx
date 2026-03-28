@@ -54,13 +54,21 @@ export function LoginCard() {
     }
 
     function updateCountdown() {
-      const remainingMs = cooldownUntil - Date.now()
-      if (remainingMs <= 0) {
-        setCooldownUntil(null)
-        setSecondsLeft(0)
-        window.sessionStorage.removeItem('todo-cloud-login-cooldown-until')
-        return
-      }
+  if (cooldownUntil === null) {
+    setSecondsLeft(0)
+    return
+  }
+
+  const remainingMs = cooldownUntil - Date.now()
+
+  if (remainingMs <= 0) {
+    setCooldownUntil(null)
+    setSecondsLeft(0)
+    return
+  }
+
+  setSecondsLeft(Math.ceil(remainingMs / 1000))
+}
 
       setSecondsLeft(Math.ceil(remainingMs / 1000))
     }
