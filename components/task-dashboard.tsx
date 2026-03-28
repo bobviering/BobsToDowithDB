@@ -383,7 +383,6 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Todo Cloud</p>
             <h1 className="mt-2 text-3xl font-bold text-slate-900">Your tasks, anywhere</h1>
             <p className="mt-2 text-sm text-slate-600">Signed in as {email}</p>
-            <p className="mt-1 text-xs text-slate-500">This browser should stay signed in, so you usually will not need another magic link.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
