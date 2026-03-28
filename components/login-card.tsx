@@ -1,17 +1,83 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+
+const COOLDOWN_SECONDS = 30
 
 export function LoginCard() {
   const supabase = useMemo(() => createClient(), [])
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
+  const [secondsLeft, setSecondsLeft] = useState(0)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function checkSession() {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+
+      if (mounted && session) {
+        router.replace('/dashboard')
+        router.refresh()
+      }
+    }
+
+    checkSession()
+
+    const rawCooldown = window.sessionStorage.getItem('todo-cloud-login-cooldown-until')
+    if (rawCooldown) {
+      const parsed = Number(rawCooldown)
+      if (Number.isFinite(parsed) && parsed > Date.now()) {
+        setCooldownUntil(parsed)
+      } else {
+        window.sessionStorage.removeItem('todo-cloud-login-cooldown-until')
+      }
+    }
+
+    return () => {
+      mounted = false
+    }
+  }, [router, supabase])
+
+  useEffect(() => {
+    if (!cooldownUntil) {
+      setSecondsLeft(0)
+      return
+    }
+
+    function updateCountdown() {
+      const remainingMs = cooldownUntil - Date.now()
+      if (remainingMs <= 0) {
+        setCooldownUntil(null)
+        setSecondsLeft(0)
+        window.sessionStorage.removeItem('todo-cloud-login-cooldown-until')
+        return
+      }
+
+      setSecondsLeft(Math.ceil(remainingMs / 1000))
+    }
+
+    updateCountdown()
+    const timer = window.setInterval(updateCountdown, 1000)
+    return () => window.clearInterval(timer)
+  }, [cooldownUntil])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (cooldownUntil && cooldownUntil > Date.now()) {
+      setError(`Please wait ${secondsLeft || 1} more second${secondsLeft === 1 ? '' : 's'} before requesting another link.`)
+      return
+    }
+
     setLoading(true)
     setMessage('')
     setError('')
@@ -25,14 +91,23 @@ export function LoginCard() {
     })
 
     if (error) {
-      setError(error.message)
+      if (error.message.toLowerCase().includes('rate limit')) {
+        setError('Too many email requests too quickly. Wait a bit, then try again once.')
+      } else {
+        setError(error.message)
+      }
     } else {
-      setMessage('Check your email for the magic link.')
+      const nextCooldownUntil = Date.now() + COOLDOWN_SECONDS * 1000
+      setCooldownUntil(nextCooldownUntil)
+      window.sessionStorage.setItem('todo-cloud-login-cooldown-until', String(nextCooldownUntil))
+      setMessage('Check your email for the magic link. Once you sign in, this browser should keep you signed in.')
       setEmail('')
     }
 
     setLoading(false)
   }
+
+  const buttonDisabled = loading || secondsLeft > 0
 
   return (
     <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-soft">
@@ -40,7 +115,7 @@ export function LoginCard() {
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Todo Cloud</p>
         <h1 className="mt-2 text-3xl font-bold text-slate-900">Sign in from anywhere</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Enter your email and Supabase will send a magic link. No password mess.
+          Enter your email && Supabase will send a magic link. After you sign in, we keep this browser signed in so you should not need frequent re-entry.
         </p>
       </div>
 
@@ -59,10 +134,10 @@ export function LoginCard() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={buttonDisabled}
           className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {loading ? 'Sending link…' : 'Email me a magic link'}
+          {loading ? 'Sending link…' : secondsLeft > 0 ? `Try again in ${secondsLeft}s` : 'Email me a magic link'}
         </button>
       </form>
 

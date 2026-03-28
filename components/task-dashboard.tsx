@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 type Priority = 'High' | 'Medium' | 'Low'
@@ -66,7 +66,6 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
   const [errorMessage, setErrorMessage] = useState('')
   const [reminderDismissedKey, setReminderDismissedKey] = useState<string | null>(null)
   const [reminderOpen, setReminderOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const savedSort = window.localStorage.getItem('todo-cloud-sort-mode') as SortMode | null
@@ -330,7 +329,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
     await refreshTasks()
   }
 
-  function exportBackup() {
+  function downloadData() {
     const payload = {
       exportedAt: new Date().toISOString(),
       tasks
@@ -340,50 +339,12 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
     const link = document.createElement('a')
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
     link.href = url
-    link.download = `todo-cloud-backup-${timestamp}.json`
+    link.download = `todo-cloud-data-${timestamp}.json`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    setStatusMessage('Backup downloaded. Check your browser save location.')
-  }
-
-  async function importBackup(file: File) {
-    try {
-      const text = await file.text()
-      const parsed = JSON.parse(text)
-      const incoming = Array.isArray(parsed) ? parsed : parsed.tasks
-      if (!Array.isArray(incoming)) {
-        throw new Error('This file does not look like a task backup.')
-      }
-
-      const rows = incoming
-        .filter((row) => row && typeof row.title === 'string')
-        .map((row) => ({
-          title: String(row.title).trim(),
-          notes: row.notes ? String(row.notes) : null,
-          due_date: row.due_date ? String(row.due_date) : null,
-          priority: ['High', 'Medium', 'Low'].includes(row.priority) ? row.priority : 'Medium',
-          list_name: row.list_name ? String(row.list_name) : 'Home',
-          completed: Boolean(row.completed)
-        }))
-        .filter((row) => row.title)
-
-      if (!rows.length) {
-        throw new Error('No valid tasks found in that file.')
-      }
-
-      const { error } = await supabase.from('tasks').insert(rows)
-      if (error) {
-        throw error
-      }
-
-      setStatusMessage(`Imported ${rows.length} task${rows.length === 1 ? '' : 's'}.`)
-      await refreshTasks()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Import failed.'
-      setErrorMessage(message)
-    }
+    setStatusMessage('Data downloaded.')
   }
 
   async function signOut() {
@@ -407,6 +368,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Todo Cloud</p>
             <h1 className="mt-2 text-3xl font-bold text-slate-900">Your tasks, anywhere</h1>
             <p className="mt-2 text-sm text-slate-600">Signed in as {email}</p>
+            <p className="mt-1 text-xs text-slate-500">This browser should stay signed in, so you usually will not need another magic link.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -425,17 +387,10 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
             </button>
             <button
               type="button"
-              onClick={exportBackup}
+              onClick={downloadData}
               className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
             >
-              Export backup
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
-            >
-              Import backup
+              Download my data
             </button>
             <button
               type="button"
@@ -781,20 +736,6 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
           </div>
         </section>
       </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json"
-        className="hidden"
-        onChange={async (event) => {
-          const file = event.target.files?.[0]
-          if (file) {
-            await importBackup(file)
-          }
-          event.currentTarget.value = ''
-        }}
-      />
     </div>
   )
 }
