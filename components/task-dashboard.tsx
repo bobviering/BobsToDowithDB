@@ -488,7 +488,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                 value={draft.title}
                 onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-                placeholder="Pay water bill"
+                placeholder=""
                 required
               />
             </label>
@@ -499,7 +499,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                 value={draft.notes}
                 onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
                 className="min-h-28 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-                placeholder="Optional details"
+                placeholder=""
               />
             </label>
 
