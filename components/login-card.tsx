@@ -21,7 +21,7 @@ export function LoginCard() {
 
     async function checkSession() {
       const {
-        data: { session }
+        data: { session },
       } = await supabase.auth.getSession()
 
       if (mounted && session) {
@@ -32,7 +32,10 @@ export function LoginCard() {
 
     checkSession()
 
-    const rawCooldown = window.sessionStorage.getItem('todo-cloud-login-cooldown-until')
+    const rawCooldown = window.sessionStorage.getItem(
+      'todo-cloud-login-cooldown-until'
+    )
+
     if (rawCooldown) {
       const parsed = Number(rawCooldown)
       if (Number.isFinite(parsed) && parsed > Date.now()) {
@@ -48,33 +51,32 @@ export function LoginCard() {
   }, [router, supabase])
 
   useEffect(() => {
-    if (!cooldownUntil) {
+    if (cooldownUntil === null) {
       setSecondsLeft(0)
       return
     }
 
     function updateCountdown() {
-  if (cooldownUntil === null) {
-    setSecondsLeft(0)
-    return
-  }
+      if (cooldownUntil === null) {
+        setSecondsLeft(0)
+        return
+      }
 
-  const remainingMs = cooldownUntil - Date.now()
+      const remainingMs = cooldownUntil - Date.now()
 
-  if (remainingMs <= 0) {
-    setCooldownUntil(null)
-    setSecondsLeft(0)
-    return
-  }
-
-  setSecondsLeft(Math.ceil(remainingMs / 1000))
-}
+      if (remainingMs <= 0) {
+        setCooldownUntil(null)
+        setSecondsLeft(0)
+        window.sessionStorage.removeItem('todo-cloud-login-cooldown-until')
+        return
+      }
 
       setSecondsLeft(Math.ceil(remainingMs / 1000))
     }
 
     updateCountdown()
     const timer = window.setInterval(updateCountdown, 1000)
+
     return () => window.clearInterval(timer)
   }, [cooldownUntil])
 
@@ -82,7 +84,11 @@ export function LoginCard() {
     event.preventDefault()
 
     if (cooldownUntil && cooldownUntil > Date.now()) {
-      setError(`Please wait ${secondsLeft || 1} more second${secondsLeft === 1 ? '' : 's'} before requesting another link.`)
+      setError(
+        `Please wait ${secondsLeft || 1} more second${
+          secondsLeft === 1 ? '' : 's'
+        } before requesting another link.`
+      )
       return
     }
 
@@ -91,24 +97,32 @@ export function LoginCard() {
     setError('')
 
     const redirectTo = `${window.location.origin}/auth/callback`
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: redirectTo
-      }
+        emailRedirectTo: redirectTo,
+      },
     })
 
     if (error) {
       if (error.message.toLowerCase().includes('rate limit')) {
-        setError('Too many email requests too quickly. Wait a bit, then try again once.')
+        setError(
+          'Too many email requests too quickly. Wait a bit, then try again once.'
+        )
       } else {
         setError(error.message)
       }
     } else {
       const nextCooldownUntil = Date.now() + COOLDOWN_SECONDS * 1000
       setCooldownUntil(nextCooldownUntil)
-      window.sessionStorage.setItem('todo-cloud-login-cooldown-until', String(nextCooldownUntil))
-      setMessage('Check your email for the magic link. Once you sign in, this browser should keep you signed in.')
+      window.sessionStorage.setItem(
+        'todo-cloud-login-cooldown-until',
+        String(nextCooldownUntil)
+      )
+      setMessage(
+        'Check your email for the magic link. Once you sign in, this browser should keep you signed in.'
+      )
       setEmail('')
     }
 
@@ -120,16 +134,24 @@ export function LoginCard() {
   return (
     <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-soft">
       <div className="mb-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Todo Cloud</p>
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">Sign in from anywhere</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+          Todo Cloud
+        </p>
+        <h1 className="mt-2 text-3xl font-bold text-slate-900">
+          Sign in from anywhere
+        </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Enter your email && Supabase will send a magic link. After you sign in, we keep this browser signed in so you should not need frequent re-entry.
+          Enter your email and Supabase will send a magic link. After you sign
+          in, we keep this browser signed in so you should not need frequent
+          re-entry.
         </p>
       </div>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-slate-700">Email address</span>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Email address
+          </span>
           <input
             type="email"
             required
@@ -145,12 +167,25 @@ export function LoginCard() {
           disabled={buttonDisabled}
           className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {loading ? 'Sending link…' : secondsLeft > 0 ? `Try again in ${secondsLeft}s` : 'Email me a magic link'}
+          {loading
+            ? 'Sending link…'
+            : secondsLeft > 0
+            ? `Try again in ${secondsLeft}s`
+            : 'Email me a magic link'}
         </button>
       </form>
 
-      {message ? <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</p> : null}
-      {error ? <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
+      {message ? (
+        <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {message}
+        </p>
+      ) : null}
+
+      {error ? (
+        <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }
