@@ -31,7 +31,7 @@ export default function Home() {
     setLoading(false)
   }
 
-  async function addTask(title) {
+async function addTask(title: string) {    
     if (!title) return
     setSaving(true)
     const { error } = await supabase.from('tasks').insert({ title, completed: false })
