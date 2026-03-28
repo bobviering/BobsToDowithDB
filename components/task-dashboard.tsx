@@ -47,6 +47,21 @@ const PRIORITY_STYLES: Record<Priority, string> = {
   Low: 'border-slate-300 bg-slate-50 text-slate-700'
 }
 
+function getPriorityCardAccent(priority: Priority, completed: boolean) {
+  if (completed) return 'border-l-slate-300 bg-slate-50'
+
+  switch (priority) {
+    case 'High':
+      return 'border-l-red-600 bg-red-50/30'
+    case 'Medium':
+      return 'border-l-amber-500 bg-amber-50/30'
+    case 'Low':
+      return 'border-l-slate-400 bg-white'
+    default:
+      return 'border-l-slate-300 bg-white'
+  }
+}
+
 export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecord[]; email: string }) {
   const supabase = useMemo(() => createClient(), [])
   const [tasks, setTasks] = useState<TaskRecord[]>(initialTasks)
@@ -625,7 +640,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                 filteredTasks.map((task) => (
                   <article
                     key={task.id}
-                    className={`rounded-[24px] border p-4 transition ${task.completed ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white'}`}
+                    className={`rounded-[24px] border border-slate-200 border-l-4 p-4 transition ${getPriorityCardAccent(task.priority, task.completed)}`}
                   >
                     <div className="flex items-start gap-3">
                       <button
@@ -644,7 +659,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                             {task.notes ? <p className={`mt-1 text-sm ${task.completed ? 'text-slate-400' : 'text-slate-600'}`}>{task.notes}</p> : null}
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${PRIORITY_STYLES[task.priority]}`}>{task.priority}</span>
+                            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${PRIORITY_STYLES[task.priority]}`}>{task.priority} priority</span>
                             <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">{task.list_name}</span>
                           </div>
                         </div>
