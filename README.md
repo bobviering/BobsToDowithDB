@@ -1,6 +1,6 @@
 # Todo Cloud
 
-A simple personal to-do list built with Next.js, Supabase Auth, and Postgres.
+A simple personal to-do list built with Next.js, Supabase Auth, and Postgres.  
 
 ## What this version includes
 
