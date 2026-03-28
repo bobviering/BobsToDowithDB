@@ -554,7 +554,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                   />
                 </label>
               ) : (
-                <div className="rounded-[22px] bg-slate-50 p-4 text-sm text-slate-500">
+                <div className="rounded-[22px] p-4 text-sm text-slate-500">
                   
                 </div>
               )}
