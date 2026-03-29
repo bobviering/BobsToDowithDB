@@ -62,6 +62,25 @@ function getPriorityCardAccent(priority: Priority, completed: boolean) {
   }
 }
 
+function formatDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
+function formatTaskMeta(task: TaskRecord) {
+  const parts = [
+    task.due_date ? `Due ${formatDate(task.due_date)}` : 'No due date',
+    task.list_name,
+    task.priority
+  ]
+  return parts.join(' • ')
+}
+
 export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; email: string }) {
   const supabase = useMemo(() => createClient(), [])
   const [tasks, setTasks] = useState<TaskRecord[]>(initialTasks)
@@ -82,9 +101,9 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
   const [reminderDismissedKey, setReminderDismissedKey] = useState<string | null>(null)
   const [reminderOpen, setReminderOpen] = useState(false)
 
-  // mobile-only collapsible sections
   const [showForm, setShowForm] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([])
 
   useEffect(() => {
     const savedSort = window.localStorage.getItem('todo-cloud-sort-mode') as SortMode | null
@@ -131,13 +150,11 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
   }, [errorMessage])
 
   const todayKey = new Date().toISOString().slice(0, 10)
+
   const reminderTasks = useMemo(() => {
     return tasks
       .filter((task) => !task.completed && !!task.due_date)
-      .filter((task) => {
-        const due = task.due_date!
-        return due <= todayKey
-      })
+      .filter((task) => task.due_date! <= todayKey)
       .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
   }, [tasks, todayKey])
 
@@ -154,14 +171,17 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
 
   const filteredTasks = useMemo(() => {
     const searchLower = search.trim().toLowerCase()
+
     const result = tasks.filter((task) => {
       const matchesSearch =
         !searchLower ||
         task.title.toLowerCase().includes(searchLower) ||
         (task.notes ?? '').toLowerCase().includes(searchLower)
+
       const matchesList = listFilter === 'all' || task.list_name === listFilter
       const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter
       const matchesCompleted = showCompleted || !task.completed
+
       return matchesSearch && matchesList && matchesPriority && matchesCompleted
     })
 
@@ -174,7 +194,10 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
       }
 
       if (sortMode === 'list') {
-        return a.list_name.localeCompare(b.list_name) || (a.due_date ?? '9999-99-99').localeCompare(b.due_date ?? '9999-99-99')
+        return (
+          a.list_name.localeCompare(b.list_name) ||
+          (a.due_date ?? '9999-99-99').localeCompare(b.due_date ?? '9999-99-99')
+        )
       }
 
       const aRank = a.due_date ? a.due_date : '9999-99-99'
@@ -194,6 +217,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
       const date = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), dayNumber)
       const dateKey = date.toISOString().slice(0, 10)
       const dayTasks = filteredTasks.filter((task) => task.due_date === dateKey)
+
       return {
         date,
         dateKey,
@@ -206,6 +230,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
     for (let i = 0; i < cells.length; i += 7) {
       rows.push(cells.slice(i, i + 7))
     }
+
     return rows
   }, [calendarDate, filteredTasks])
 
@@ -240,15 +265,27 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
     return draft.presetList === 'Other' ? draft.customList.trim() : draft.presetList
   }
 
+  function toggleTaskExpanded(id: string) {
+    setExpandedTaskIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    )
+  }
+
+  function isTaskExpanded(id: string) {
+    return expandedTaskIds.includes(id)
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setErrorMessage('')
 
     const listName = draftListValue()
+
     if (!draft.title.trim()) {
       setErrorMessage('Task title is required.')
       return
     }
+
     if (!listName) {
       setErrorMessage('Pick a list or name one in Other.')
       return
@@ -297,9 +334,11 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
       presetList,
       customList: presetList === 'Other' ? task.list_name : ''
     })
+
     setEditingId(task.id)
     setViewMode('list')
     setShowForm(true)
+    setExpandedTaskIds((current) => (current.includes(task.id) ? current : [...current, task.id]))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -328,6 +367,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
       return
     }
 
+    setExpandedTaskIds((current) => current.filter((item) => item !== id))
     setStatusMessage('Task deleted.')
     await refreshTasks()
   }
@@ -356,6 +396,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
       return
     }
 
+    setExpandedTaskIds([])
     setStatusMessage('All tasks deleted.')
     await refreshTasks()
   }
@@ -365,16 +406,19 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
       exportedAt: new Date().toISOString(),
       tasks
     }
+
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+
     link.href = url
     link.download = `todo-cloud-data-${timestamp}.json`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+
     setStatusMessage('Data downloaded.')
   }
 
@@ -449,7 +493,9 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
         <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[28px] sm:p-6">
           <div className="mb-4 flex items-center justify-between sm:mb-5">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 sm:text-xl">{editingId ? 'Edit task' : 'Add task'}</h2>
+              <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
+                {editingId ? 'Edit task' : 'Add task'}
+              </h2>
             </div>
 
             <div className="flex items-center gap-2">
@@ -481,7 +527,6 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
                   value={draft.title}
                   onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
-                  placeholder=""
                   required
                 />
               </label>
@@ -492,7 +537,6 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
                   value={draft.notes}
                   onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
                   className="min-h-28 w-full rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
-                  placeholder=""
                 />
               </label>
 
@@ -553,7 +597,10 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-                <button type="submit" className="min-h-[48px] w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white">
+                <button
+                  type="submit"
+                  className="min-h-[48px] w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
+                >
                   {editingId ? 'Save changes' : 'Add task'}
                 </button>
 
@@ -585,7 +632,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
                   viewMode === 'list' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
                 }`}
               >
-                List view
+                List
               </button>
 
               <button
@@ -665,7 +712,11 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
 
           <div className="mt-4 flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={showCompleted} onChange={(event) => setShowCompleted(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={showCompleted}
+                onChange={(event) => setShowCompleted(event.target.checked)}
+              />
               Show completed tasks
             </label>
             <p>
@@ -680,70 +731,95 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
                   No tasks match your current filters.
                 </div>
               ) : (
-                filteredTasks.map((task) => (
-                  <article
-                    key={task.id}
-                    className={`rounded-[24px] border border-slate-200 p-4 transition ${getPriorityCardAccent(task.priority, task.completed)}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <button
-                        type="button"
-                        onClick={() => toggleTask(task)}
-                        className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm ${
-                          task.completed ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-400 bg-white text-transparent'
-                        }`}
-                        aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
-                      >
-                        ✓
-                      </button>
+                filteredTasks.map((task) => {
+                  const expanded = isTaskExpanded(task.id)
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <h3 className={`text-base font-semibold ${task.completed ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
-                              {task.title}
-                            </h3>
-                            {task.notes ? (
-                              <p className={`mt-1 text-sm ${task.completed ? 'text-slate-400' : 'text-slate-600'}`}>
-                                {task.notes}
-                              </p>
-                            ) : null}
-                          </div>
+                  return (
+                    <article
+                      key={task.id}
+                      className={`rounded-[24px] border border-slate-200 p-4 transition ${getPriorityCardAccent(task.priority, task.completed)}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleTask(task)}
+                          className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm ${
+                            task.completed
+                              ? 'border-emerald-600 bg-emerald-600 text-white'
+                              : 'border-slate-400 bg-white text-transparent'
+                          }`}
+                          aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
+                        >
+                          ✓
+                        </button>
 
-                          <div className="flex flex-wrap gap-2">
-                            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${PRIORITY_STYLES[task.priority]}`}>
-                              {task.priority} priority
-                            </span>
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                              {task.list_name}
-                            </span>
-                          </div>
-                        </div>
+                        <div className="min-w-0 flex-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleTaskExpanded(task.id)}
+                            className="flex w-full items-start justify-between gap-3 text-left"
+                            aria-expanded={expanded}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <h3
+                                className={`text-base font-semibold ${
+                                  task.completed ? 'text-slate-400 line-through' : 'text-slate-900'
+                                }`}
+                              >
+                                {task.title}
+                              </h3>
+                              <div className={`mt-1 text-sm ${task.completed ? 'text-slate-400' : 'text-slate-500'}`}>
+                                {formatTaskMeta(task)}
+                              </div>
+                            </div>
 
-                        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                          <div className="text-sm text-slate-500">{task.due_date ? `Due ${formatDate(task.due_date)}` : 'No due date'}</div>
+                            <div className="mt-0.5 shrink-0 text-lg font-semibold text-slate-400">
+                              {expanded ? '–' : '+'}
+                            </div>
+                          </button>
 
-                          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => startEdit(task)}
-                              className="min-h-[44px] rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteTask(task.id)}
-                              className="min-h-[44px] rounded-2xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
-                            >
-                              Delete
-                            </button>
-                          </div>
+                          {expanded ? (
+                            <div className="mt-3 space-y-3">
+                              {task.notes ? (
+                                <p className={`text-sm ${task.completed ? 'text-slate-400' : 'text-slate-600'}`}>
+                                  {task.notes}
+                                </p>
+                              ) : null}
+
+                              <div className="flex flex-wrap gap-2">
+                                <span
+                                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${PRIORITY_STYLES[task.priority]}`}
+                                >
+                                  {task.priority} priority
+                                </span>
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                                  {task.list_name}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(task)}
+                                  className="min-h-[44px] rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteTask(task.id)}
+                                  className="min-h-[44px] rounded-2xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
-                    </div>
-                  </article>
-                ))
+                    </article>
+                  )
+                })
               )}
             </div>
           ) : (
@@ -779,6 +855,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
                   <div key={rowIndex} className="grid grid-cols-7 gap-1 sm:gap-2">
                     {row.map((cell) => {
                       const isToday = cell.dateKey === todayKey
+
                       return (
                         <div
                           key={cell.dateKey}
@@ -793,6 +870,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
                           >
                             {cell.date.getDate()}
                           </div>
+
                           <div className="space-y-1">
                             {cell.tasks.slice(0, 3).map((task) => (
                               <button
@@ -806,8 +884,11 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
                                 {task.title}
                               </button>
                             ))}
+
                             {cell.tasks.length > 3 ? (
-                              <div className="text-[11px] text-slate-500 sm:text-xs">+{cell.tasks.length - 3} more</div>
+                              <div className="text-[11px] text-slate-500 sm:text-xs">
+                                +{cell.tasks.length - 3} more
+                              </div>
                             ) : null}
                           </div>
                         </div>
@@ -820,7 +901,11 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
           )}
 
           <div className="mt-8 border-t border-slate-200 pt-6">
-            <button type="button" onClick={deleteAllTasks} className="text-sm font-semibold text-slate-400 hover:text-rose-700">
+            <button
+              type="button"
+              onClick={deleteAllTasks}
+              className="text-sm font-semibold text-slate-400 hover:text-rose-700"
+            >
               Delete all tasks
             </button>
           </div>
@@ -855,14 +940,4 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
       </div>
     </div>
   )
-}
-
-function formatDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
 }
