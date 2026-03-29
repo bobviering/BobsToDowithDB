@@ -62,7 +62,7 @@ function getPriorityCardAccent(priority: Priority, completed: boolean) {
   }
 }
 
-export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecord[]; email: string }) {
+export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; email: string }) {
   const supabase = useMemo(() => createClient(), [])
   const [tasks, setTasks] = useState<TaskRecord[]>(initialTasks)
   const [draft, setDraft] = useState<DraftTask>(DEFAULT_DRAFT)
@@ -167,7 +167,10 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
 
     return result.sort((a, b) => {
       if (sortMode === 'priority') {
-        return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] || (a.due_date ?? '9999-99-99').localeCompare(b.due_date ?? '9999-99-99')
+        return (
+          PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] ||
+          (a.due_date ?? '9999-99-99').localeCompare(b.due_date ?? '9999-99-99')
+        )
       }
 
       if (sortMode === 'list') {
@@ -390,49 +393,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
 
   return (
     <div className="mx-auto max-w-7xl p-3 sm:p-6 lg:p-8">
-<header className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:mb-6 sm:rounded-[28px] sm:p-6">
-  <div className="flex justify-end">
-    {/* intentionally minimal header */}
-  </div>
-</header>        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Todo Cloud</p>
-            <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">Your tasks, anywhere</h1>
-            <p className="mt-2 break-all text-sm text-slate-600 sm:break-normal">Signed in as {email}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2">
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={`min-h-[44px] rounded-2xl px-4 py-2 text-sm font-semibold ${viewMode === 'list' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}
-            >
-              List view
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('calendar')}
-              className={`min-h-[44px] rounded-2xl px-4 py-2 text-sm font-semibold ${viewMode === 'calendar' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}
-            >
-              Calendar view
-            </button>
-            <button
-              type="button"
-              onClick={downloadData}
-              className="min-h-[44px] rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
-            >
-              Download my data
-            </button>
-            <button
-              type="button"
-              onClick={signOut}
-              className="min-h-[44px] rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+      <header className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:mb-6 sm:rounded-[28px] sm:p-6" />
 
       {reminderOpen ? (
         <div className="mb-4 rounded-[24px] border border-amber-200 bg-amber-50 p-4 shadow-soft sm:mb-6 sm:rounded-[28px] sm:p-5">
@@ -479,7 +440,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
         </div>
       ) : null}
 
-      {(statusMessage || errorMessage) ? (
+      {statusMessage || errorMessage ? (
         <div className="mb-4 flex flex-col gap-2 sm:mb-6">
           {statusMessage ? <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</div> : null}
           {errorMessage ? <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div> : null}
@@ -613,49 +574,37 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
         </section>
 
         <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[28px] sm:p-6">
-<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-  <div>
-    <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Tasks</h2>
-  </div>
-
-  <div className="flex flex-wrap gap-2">
-    <button
-      type="button"
-      onClick={() => setViewMode('list')}
-      className={`min-h-[44px] rounded-2xl px-4 py-2 text-sm font-semibold ${
-        viewMode === 'list'
-          ? 'bg-slate-900 text-white'
-          : 'bg-slate-100 text-slate-700'
-      }`}
-    >
-      List view
-    </button>
-
-    <button
-      type="button"
-      onClick={() => setViewMode('calendar')}
-      className={`min-h-[44px] rounded-2xl px-4 py-2 text-sm font-semibold ${
-        viewMode === 'calendar'
-          ? 'bg-slate-900 text-white'
-          : 'bg-slate-100 text-slate-700'
-      }`}
-    >
-      Calendar view
-    </button>
-
-    <button
-      type="button"
-      onClick={clearCompleted}
-      className="min-h-[44px] rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
-    >
-      Clear completed
-    </button>
-  </div>
-</div>            <div>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
               <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Tasks</h2>
             </div>
+
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={clearCompleted} className="min-h-[44px] rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`min-h-[44px] rounded-2xl px-4 py-2 text-sm font-semibold ${
+                  viewMode === 'list' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                List view
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewMode('calendar')}
+                className={`min-h-[44px] rounded-2xl px-4 py-2 text-sm font-semibold ${
+                  viewMode === 'calendar' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                Calendar view
+              </button>
+
+              <button
+                type="button"
+                onClick={clearCompleted}
+                className="min-h-[44px] rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
+              >
                 Clear completed
               </button>
             </div>
@@ -721,7 +670,9 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
               <input type="checkbox" checked={showCompleted} onChange={(event) => setShowCompleted(event.target.checked)} />
               Show completed tasks
             </label>
-            <p>{filteredTasks.length} task{filteredTasks.length === 1 ? '' : 's'} shown</p>
+            <p>
+              {filteredTasks.length} task{filteredTasks.length === 1 ? '' : 's'} shown
+            </p>
           </div>
 
           {viewMode === 'list' ? (
@@ -740,7 +691,9 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                       <button
                         type="button"
                         onClick={() => toggleTask(task)}
-                        className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm ${task.completed ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-400 bg-white text-transparent'}`}
+                        className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm ${
+                          task.completed ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-400 bg-white text-transparent'
+                        }`}
                         aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
                       >
                         ✓
@@ -770,9 +723,7 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                         </div>
 
                         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                          <div className="text-sm text-slate-500">
-                            {task.due_date ? `Due ${formatDate(task.due_date)}` : 'No due date'}
-                          </div>
+                          <div className="text-sm text-slate-500">{task.due_date ? `Due ${formatDate(task.due_date)}` : 'No due date'}</div>
 
                           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                             <button
@@ -833,10 +784,14 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                       return (
                         <div
                           key={cell.dateKey}
-                          className={`min-h-24 rounded-[16px] border p-1.5 sm:min-h-32 sm:rounded-[20px] sm:p-2 ${cell.inMonth ? 'border-slate-200 bg-slate-50' : 'border-slate-100 bg-slate-100 text-slate-400'}`}
+                          className={`min-h-24 rounded-[16px] border p-1.5 sm:min-h-32 sm:rounded-[20px] sm:p-2 ${
+                            cell.inMonth ? 'border-slate-200 bg-slate-50' : 'border-slate-100 bg-slate-100 text-slate-400'
+                          }`}
                         >
                           <div
-                            className={`mb-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold sm:h-7 sm:w-7 sm:text-sm ${isToday ? 'bg-slate-900 text-white' : 'text-slate-700'}`}
+                            className={`mb-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold sm:h-7 sm:w-7 sm:text-sm ${
+                              isToday ? 'bg-slate-900 text-white' : 'text-slate-700'
+                            }`}
                           >
                             {cell.date.getDate()}
                           </div>
@@ -846,7 +801,9 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
                                 key={task.id}
                                 type="button"
                                 onClick={() => startEdit(task)}
-                                className={`block w-full rounded-xl border px-2 py-1 text-left text-[11px] font-medium sm:text-xs ${PRIORITY_STYLES[task.priority]} ${task.completed ? 'opacity-60 line-through' : ''}`}
+                                className={`block w-full rounded-xl border px-2 py-1 text-left text-[11px] font-medium sm:text-xs ${
+                                  PRIORITY_STYLES[task.priority]
+                                } ${task.completed ? 'opacity-60 line-through' : ''}`}
                               >
                                 {task.title}
                               </button>
@@ -880,23 +837,24 @@ export function TaskDashboard({ initialTasks, email }: { initialTasks: TaskRecor
       >
         +
       </button>
-        <div className="mt-10 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-between">
-  <button
-    type="button"
-    onClick={downloadData}
-    className="text-sm font-semibold text-slate-600 hover:text-slate-900"
-  >
-    Download my data
-  </button>
 
-  <button
-    type="button"
-    onClick={signOut}
-    className="text-sm font-semibold text-slate-600 hover:text-rose-700"
-  >
-    Sign out
-  </button>
-</div>
+      <div className="mt-10 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-between">
+        <button
+          type="button"
+          onClick={downloadData}
+          className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+        >
+          Download my data
+        </button>
+
+        <button
+          type="button"
+          onClick={signOut}
+          className="text-sm font-semibold text-slate-600 hover:text-rose-700"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   )
 }
