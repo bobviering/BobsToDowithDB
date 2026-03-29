@@ -393,8 +393,6 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
 
   return (
     <div className="mx-auto max-w-7xl p-3 sm:p-6 lg:p-8">
-      <header className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:mb-6 sm:rounded-[28px] sm:p-6" />
-
       {reminderOpen ? (
         <div className="mb-4 rounded-[24px] border border-amber-200 bg-amber-50 p-4 shadow-soft sm:mb-6 sm:rounded-[28px] sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -574,16 +572,16 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
         </section>
 
         <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[28px] sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3">
             <div>
               <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Tasks</h2>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={`min-h-[44px] rounded-2xl px-4 py-2 text-sm font-semibold ${
+                className={`min-h-[40px] rounded-xl px-2 py-2 text-xs font-semibold sm:min-h-[44px] sm:rounded-2xl sm:px-4 sm:text-sm ${
                   viewMode === 'list' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
                 }`}
               >
@@ -593,19 +591,19 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
               <button
                 type="button"
                 onClick={() => setViewMode('calendar')}
-                className={`min-h-[44px] rounded-2xl px-4 py-2 text-sm font-semibold ${
+                className={`min-h-[40px] rounded-xl px-2 py-2 text-xs font-semibold sm:min-h-[44px] sm:rounded-2xl sm:px-4 sm:text-sm ${
                   viewMode === 'calendar' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
                 }`}
               >
-                Calendar view
+                Calendar
               </button>
 
               <button
                 type="button"
                 onClick={clearCompleted}
-                className="min-h-[44px] rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
+                className="min-h-[40px] rounded-xl bg-slate-100 px-2 py-2 text-xs font-semibold text-slate-700 sm:min-h-[44px] sm:rounded-2xl sm:px-4 sm:text-sm"
               >
-                Clear completed
+                Clear done
               </button>
             </div>
           </div>
