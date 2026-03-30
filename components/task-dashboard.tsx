@@ -673,13 +673,12 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
           </div>
 
           <div className={showFilters ? 'block lg:block' : 'hidden lg:block'}>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(120px,0.7fr))_minmax(170px,0.9fr)]">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(200px,1.2fr)_repeat(3,minmax(140px,0.8fr))_minmax(180px,1fr)]">
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search tasks"
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 sm:col-span-2 xl:col-span-1 xl:py-2 xl:text-sm"
-              />
+className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 sm:col-span-2 xl:col-span-1 xl:max-w-[260px] xl:py-2 xl:text-sm"              />
 
               <select
                 value={listFilter}
@@ -688,7 +687,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
               >
                 {availableLists.map((item) => (
                   <option key={item} value={item}>
-                    {item === 'all' ? 'List' : item}
+                    {item === 'all' ? 'All Lists' : item}
                   </option>
                 ))}
               </select>
@@ -698,7 +697,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
                 onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}
                 className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 xl:py-2 xl:text-sm"
               >
-                <option value="all">Priority</option>
+                <option value="all">All Priorities</option>
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
@@ -709,9 +708,9 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
                 onChange={(event) => setSortMode(event.target.value as SortMode)}
                 className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 xl:py-2 xl:text-sm"
               >
-                <option value="date">Date</option>
-                <option value="priority">Sort by priority</option>
-                <option value="list">Sort by list</option>
+                <option value="date">Sort by Date</option>
+                <option value="priority">Sort by Priority</option>
+                <option value="list">Sort by List</option>
               </select>
 
               <button
