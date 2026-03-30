@@ -90,7 +90,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
   const [listFilter, setListFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all')
   const [sortMode, setSortMode] = useState<SortMode>('date')
-  const [showCompleted, setShowCompleted] = useState(true)
+  const [showCompleted, setShowCompleted] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [calendarDate, setCalendarDate] = useState(() => {
     const now = new Date()
