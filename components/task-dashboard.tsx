@@ -149,8 +149,8 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
     return () => window.clearTimeout(timer)
   }, [errorMessage])
 
-  const todayKey = new Date().toISOString().slice(0, 10)
-
+const now = new Date()
+const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const reminderTasks = useMemo(() => {
     return tasks
       .filter((task) => !task.completed && !!task.due_date)
