@@ -81,7 +81,7 @@ function formatTaskMeta(task: TaskRecord) {
   return parts.join(' • ')
 }
 
-export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; email: string }) {
+export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) {
   const supabase = useMemo(() => createClient(), [])
   const [tasks, setTasks] = useState<TaskRecord[]>(initialTasks)
   const [draft, setDraft] = useState<DraftTask>(DEFAULT_DRAFT)
@@ -149,8 +149,9 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
     return () => window.clearTimeout(timer)
   }, [errorMessage])
 
-const now = new Date()
-const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const now = new Date()
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
   const reminderTasks = useMemo(() => {
     return tasks
       .filter((task) => !task.completed && !!task.due_date)
@@ -215,7 +216,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
     const cells = Array.from({ length: totalCells }, (_, index) => {
       const dayNumber = index - startOffset + 1
       const date = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), dayNumber)
-      const dateKey = date.toISOString().slice(0, 10)
+      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
       const dayTasks = filteredTasks.filter((task) => task.due_date === dateKey)
 
       return {
@@ -318,6 +319,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
 
     resetDraft()
     setShowForm(false)
+    setViewMode('list')
     await refreshTasks()
   }
 
@@ -490,11 +492,12 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-6">
-<section
-  className={`rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[28px] sm:p-6 ${
-    showForm ? 'block' : 'hidden'
-  } lg:block`}
->          <div className="mb-4 flex items-center justify-between sm:mb-5">
+        <section
+          className={`rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[28px] sm:p-6 ${
+            showForm ? 'block' : 'hidden'
+          } lg:block`}
+        >
+          <div className="mb-4 flex items-center justify-between sm:mb-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                 {editingId ? 'Edit task' : 'Add task'}
@@ -506,7 +509,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
                 <button
                   type="button"
                   onClick={resetDraft}
-                  className="hidden min-h-[44px] rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 lg:inline-flex"
+                  className="hidden min-h-[40px] rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 lg:inline-flex"
                 >
                   Cancel
                 </button>
@@ -515,7 +518,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
               <button
                 type="button"
                 onClick={() => setShowForm((prev) => !prev)}
-                className="min-h-[44px] rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 lg:hidden"
+                className="min-h-[40px] rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 lg:hidden"
               >
                 {showForm ? '– Hide' : '+ Show'}
               </button>
@@ -622,7 +625,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
         </section>
 
         <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[28px] sm:p-6">
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Tasks</h2>
             </div>
@@ -631,7 +634,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={`min-h-[40px] rounded-xl px-2 py-2 text-xs font-semibold sm:min-h-[44px] sm:rounded-2xl sm:px-4 sm:text-sm ${
+                className={`min-h-[40px] rounded-xl px-3 py-2 text-xs font-semibold sm:min-h-[40px] sm:rounded-xl sm:px-3 sm:text-sm lg:min-h-[36px] lg:px-3 lg:py-1.5 ${
                   viewMode === 'list' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
                 }`}
               >
@@ -641,7 +644,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
               <button
                 type="button"
                 onClick={() => setViewMode('calendar')}
-                className={`min-h-[40px] rounded-xl px-2 py-2 text-xs font-semibold sm:min-h-[44px] sm:rounded-2xl sm:px-4 sm:text-sm ${
+                className={`min-h-[40px] rounded-xl px-3 py-2 text-xs font-semibold sm:min-h-[40px] sm:rounded-xl sm:px-3 sm:text-sm lg:min-h-[36px] lg:px-3 lg:py-1.5 ${
                   viewMode === 'calendar' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
                 }`}
               >
@@ -651,7 +654,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
               <button
                 type="button"
                 onClick={clearCompleted}
-                className="min-h-[40px] rounded-xl bg-slate-100 px-2 py-2 text-xs font-semibold text-slate-700 sm:min-h-[44px] sm:rounded-2xl sm:px-4 sm:text-sm"
+                className="min-h-[40px] rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 sm:min-h-[40px] sm:rounded-xl sm:px-3 sm:text-sm lg:min-h-[36px] lg:px-3 lg:py-1.5"
               >
                 Clear done
               </button>
@@ -670,60 +673,60 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
           </div>
 
           <div className={showFilters ? 'block lg:block' : 'hidden lg:block'}>
-  <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-    <input
-      value={search}
-      onChange={(event) => setSearch(event.target.value)}
-      placeholder="Search tasks"
-      className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 sm:col-span-2 lg:col-span-2"
-    />
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(260px,1.6fr)_repeat(3,minmax(140px,0.75fr))_minmax(190px,1fr)]">
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search tasks"
+                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 sm:col-span-2 lg:col-span-1 lg:py-2 lg:text-sm"
+              />
 
-    <select
-      value={listFilter}
-      onChange={(event) => setListFilter(event.target.value)}
-      className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
-    >
-      {availableLists.map((item) => (
-        <option key={item} value={item}>
-          {item === 'all' ? 'All lists' : item}
-        </option>
-      ))}
-    </select>
+              <select
+                value={listFilter}
+                onChange={(event) => setListFilter(event.target.value)}
+                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 lg:py-2 lg:text-sm"
+              >
+                {availableLists.map((item) => (
+                  <option key={item} value={item}>
+                    {item === 'all' ? 'All lists' : item}
+                  </option>
+                ))}
+              </select>
 
-    <select
-      value={priorityFilter}
-      onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}
-      className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
-    >
-      <option value="all">All priorities</option>
-      <option value="High">High</option>
-      <option value="Medium">Medium</option>
-      <option value="Low">Low</option>
-    </select>
+              <select
+                value={priorityFilter}
+                onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}
+                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 lg:py-2 lg:text-sm"
+              >
+                <option value="all">All priorities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
 
-    <select
-      value={sortMode}
-      onChange={(event) => setSortMode(event.target.value as SortMode)}
-      className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
-    >
-      <option value="date">Sort by date</option>
-      <option value="priority">Sort by priority</option>
-      <option value="list">Sort by list</option>
-    </select>
+              <select
+                value={sortMode}
+                onChange={(event) => setSortMode(event.target.value as SortMode)}
+                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 lg:py-2 lg:text-sm"
+              >
+                <option value="date">Sort by date</option>
+                <option value="priority">Sort by priority</option>
+                <option value="list">Sort by list</option>
+              </select>
 
-    <button
-      type="button"
-      onClick={() => setShowCompleted((prev) => !prev)}
-      className={`rounded-2xl border px-4 py-3 text-base font-medium outline-none transition ${
-        showCompleted
-          ? 'border-slate-900 bg-slate-900 text-white'
-          : 'border-slate-300 bg-white text-slate-700'
-      }`}
-    >
-      {showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
-    </button>
-  </div>
-</div>
+              <button
+                type="button"
+                onClick={() => setShowCompleted((prev) => !prev)}
+                className={`rounded-2xl border px-4 py-3 text-base font-medium outline-none transition lg:whitespace-nowrap lg:py-2 lg:text-sm ${
+                  showCompleted
+                    ? 'border-slate-900 bg-slate-900 text-white'
+                    : 'border-slate-300 bg-white text-slate-700'
+                }`}
+              >
+                {showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
+              </button>
+            </div>
+          </div>
 
           {viewMode === 'list' ? (
             <div className="mt-5 space-y-3">
@@ -738,7 +741,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
                   return (
                     <article
                       key={task.id}
-                      className={`rounded-[24px] border border-slate-200 p-4 transition ${getPriorityCardAccent(task.priority, task.completed)}`}
+                      className={`rounded-[20px] border border-slate-200 p-4 transition lg:px-5 lg:py-3 ${getPriorityCardAccent(task.priority, task.completed)}`}
                     >
                       <div className="flex items-start gap-3">
                         <button
@@ -802,14 +805,14 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
                                 <button
                                   type="button"
                                   onClick={() => startEdit(task)}
-                                  className="min-h-[44px] rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700"
+                                  className="min-h-[40px] rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700"
                                 >
                                   Edit
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => deleteTask(task.id)}
-                                  className="min-h-[44px] rounded-2xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
+                                  className="min-h-[40px] rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
                                 >
                                   Delete
                                 </button>
@@ -829,7 +832,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
                 <button
                   type="button"
                   onClick={() => setCalendarDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
-                  className="min-h-[44px] rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
+                  className="min-h-[40px] rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
                 >
                   Previous
                 </button>
@@ -837,7 +840,7 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
                 <button
                   type="button"
                   onClick={() => setCalendarDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
-                  className="min-h-[44px] rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
+                  className="min-h-[40px] rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700"
                 >
                   Next
                 </button>
