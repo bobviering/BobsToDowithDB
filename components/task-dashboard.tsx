@@ -490,8 +490,11 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-6">
-        <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[28px] sm:p-6">
-          <div className="mb-4 flex items-center justify-between sm:mb-5">
+<section
+  className={`rounded-[24px] border border-slate-200 bg-white p-4 shadow-soft sm:rounded-[28px] sm:p-6 ${
+    showForm ? 'block' : 'hidden'
+  } lg:block`}
+>          <div className="mb-4 flex items-center justify-between sm:mb-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                 {editingId ? 'Edit task' : 'Add task'}
@@ -519,7 +522,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[]; em
             </div>
           </div>
 
-          <div className={showForm ? 'block lg:block' : 'hidden lg:block'}>
+          <div>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">Task</span>
