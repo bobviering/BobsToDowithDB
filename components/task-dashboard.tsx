@@ -716,8 +716,8 @@ className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none 
               <button
                 type="button"
                 onClick={() => setShowCompleted((prev) => !prev)}
-                className={`rounded-2xl border px-4 py-3 text-base font-medium outline-none transition xl:whitespace-nowrap xl:py-2 xl:text-sm ${
-                  showCompleted
+className={`rounded-2xl border px-4 py-3 text-base font-medium outline-none transition xl:w-[180px] xl:py-2 xl:text-sm ${                  
+  showCompleted
                     ? 'border-slate-900 bg-slate-900 text-white'
                     : 'border-slate-300 bg-white text-slate-700'
                 }`}
