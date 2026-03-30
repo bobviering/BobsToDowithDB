@@ -688,7 +688,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
               >
                 {availableLists.map((item) => (
                   <option key={item} value={item}>
-                    {item === 'all' ? 'All lists' : item}
+                    {item === 'all' ? 'List' : item}
                   </option>
                 ))}
               </select>
@@ -698,7 +698,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
                 onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}
                 className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 xl:py-2 xl:text-sm"
               >
-                <option value="all">All priorities</option>
+                <option value="all">Priority</option>
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
@@ -709,7 +709,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
                 onChange={(event) => setSortMode(event.target.value as SortMode)}
                 className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 xl:py-2 xl:text-sm"
               >
-                <option value="date">Sort by date</option>
+                <option value="date">Date</option>
                 <option value="priority">Sort by priority</option>
                 <option value="list">Sort by list</option>
               </select>
