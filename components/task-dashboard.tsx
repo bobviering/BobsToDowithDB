@@ -673,8 +673,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
           </div>
 
           <div className={showFilters ? 'block lg:block' : 'hidden lg:block'}>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(200px,1.2fr)_repeat(3,minmax(140px,0.8fr))_minmax(180px,1fr)]">
-              <input
+<div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[180px_repeat(3,140px)_auto]">              <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search tasks"
