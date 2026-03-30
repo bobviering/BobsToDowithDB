@@ -39,7 +39,7 @@ const DEFAULT_DRAFT: DraftTask = {
   customList: ''
 }
 
-const PRESET_LISTS: PresetList[] = ['Home', 'Work', 'Personal', 'Errands', 'Health', 'Finance', 'Other']
+const PRESET_LISTS: PresetList[] = ['Home', 'Work', 'Other']
 const PRIORITY_ORDER: Record<Priority, number> = { High: 0, Medium: 1, Low: 2 }
 const PRIORITY_STYLES: Record<Priority, string> = {
   High: 'border-rose-300 bg-rose-50 text-rose-700',
