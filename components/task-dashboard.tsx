@@ -673,8 +673,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
           </div>
 
           <div className={showFilters ? 'block lg:block' : 'hidden lg:block'}>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(260px,1.6fr)_repeat(3,minmax(140px,0.75fr))_minmax(190px,1fr)]">
-              <input
+<div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(120px,0.7fr))_minmax(170px,0.9fr)]">              <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search tasks"
@@ -822,10 +821,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
       </div>
     </article>
   )
-})
-                  )
-                })
-              )}
+}) 
             </div>
           ) : (
             <div className="mt-5">
