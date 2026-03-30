@@ -670,62 +670,60 @@ const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, 
           </div>
 
           <div className={showFilters ? 'block lg:block' : 'hidden lg:block'}>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search tasks"
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 sm:col-span-2 lg:col-span-2"
-              />
+  <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+    <input
+      value={search}
+      onChange={(event) => setSearch(event.target.value)}
+      placeholder="Search tasks"
+      className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 sm:col-span-2 lg:col-span-2"
+    />
 
-              <select
-                value={listFilter}
-                onChange={(event) => setListFilter(event.target.value)}
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
-              >
-                {availableLists.map((item) => (
-                  <option key={item} value={item}>
-                    {item === 'all' ? 'All lists' : item}
-                  </option>
-                ))}
-              </select>
+    <select
+      value={listFilter}
+      onChange={(event) => setListFilter(event.target.value)}
+      className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
+    >
+      {availableLists.map((item) => (
+        <option key={item} value={item}>
+          {item === 'all' ? 'All lists' : item}
+        </option>
+      ))}
+    </select>
 
-              <select
-                value={priorityFilter}
-                onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
-              >
-                <option value="all">All priorities</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
+    <select
+      value={priorityFilter}
+      onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}
+      className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
+    >
+      <option value="all">All priorities</option>
+      <option value="High">High</option>
+      <option value="Medium">Medium</option>
+      <option value="Low">Low</option>
+    </select>
 
-              <select
-                value={sortMode}
-                onChange={(event) => setSortMode(event.target.value as SortMode)}
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
-              >
-                <option value="date">Sort by date</option>
-                <option value="priority">Sort by priority</option>
-                <option value="list">Sort by list</option>
-              </select>
-            </div>
-          </div>
+    <select
+      value={sortMode}
+      onChange={(event) => setSortMode(event.target.value as SortMode)}
+      className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500"
+    >
+      <option value="date">Sort by date</option>
+      <option value="priority">Sort by priority</option>
+      <option value="list">Sort by list</option>
+    </select>
 
-          <div className="mt-4 flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={showCompleted}
-                onChange={(event) => setShowCompleted(event.target.checked)}
-              />
-              Show completed tasks
-            </label>
-            <p>
-              {filteredTasks.length} task{filteredTasks.length === 1 ? '' : 's'} shown
-            </p>
-          </div>
+    <button
+      type="button"
+      onClick={() => setShowCompleted((prev) => !prev)}
+      className={`rounded-2xl border px-4 py-3 text-base font-medium outline-none transition ${
+        showCompleted
+          ? 'border-slate-900 bg-slate-900 text-white'
+          : 'border-slate-300 bg-white text-slate-700'
+      }`}
+    >
+      {showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
+    </button>
+  </div>
+</div>
 
           {viewMode === 'list' ? (
             <div className="mt-5 space-y-3">
