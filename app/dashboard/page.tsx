@@ -18,5 +18,5 @@ export default async function DashboardPage() {
     .order('due_date', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
 
-  return <TaskDashboard initialTasks={(tasks ?? []) as any} email={session.user.email ?? 'Signed in'} />
+return <TaskDashboard initialTasks={(tasks ?? []) as any} />
 }
