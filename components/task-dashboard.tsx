@@ -673,17 +673,18 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
           </div>
 
           <div className={showFilters ? 'block lg:block' : 'hidden lg:block'}>
-<div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(120px,0.7fr))_minmax(170px,0.9fr)]">              <input
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(120px,0.7fr))_minmax(170px,0.9fr)]">
+              <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search tasks"
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 sm:col-span-2 lg:col-span-1 lg:py-2 lg:text-sm"
+                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 sm:col-span-2 xl:col-span-1 xl:py-2 xl:text-sm"
               />
 
               <select
                 value={listFilter}
                 onChange={(event) => setListFilter(event.target.value)}
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 lg:py-2 lg:text-sm"
+                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 xl:py-2 xl:text-sm"
               >
                 {availableLists.map((item) => (
                   <option key={item} value={item}>
@@ -695,7 +696,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
               <select
                 value={priorityFilter}
                 onChange={(event) => setPriorityFilter(event.target.value as 'all' | Priority)}
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 lg:py-2 lg:text-sm"
+                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 xl:py-2 xl:text-sm"
               >
                 <option value="all">All priorities</option>
                 <option value="High">High</option>
@@ -706,7 +707,7 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
               <select
                 value={sortMode}
                 onChange={(event) => setSortMode(event.target.value as SortMode)}
-                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 lg:py-2 lg:text-sm"
+                className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-slate-500 xl:py-2 xl:text-sm"
               >
                 <option value="date">Sort by date</option>
                 <option value="priority">Sort by priority</option>
@@ -716,13 +717,13 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
               <button
                 type="button"
                 onClick={() => setShowCompleted((prev) => !prev)}
-                className={`rounded-2xl border px-4 py-3 text-base font-medium outline-none transition lg:whitespace-nowrap lg:py-2 lg:text-sm ${
+                className={`rounded-2xl border px-4 py-3 text-base font-medium outline-none transition xl:whitespace-nowrap xl:py-2 xl:text-sm ${
                   showCompleted
                     ? 'border-slate-900 bg-slate-900 text-white'
                     : 'border-slate-300 bg-white text-slate-700'
                 }`}
               >
-                {showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
+                {showCompleted ? 'Hide completed' : 'Show completed'}
               </button>
             </div>
           </div>
@@ -735,93 +736,94 @@ export function TaskDashboard({ initialTasks }: { initialTasks: TaskRecord[] }) 
                 </div>
               ) : (
                 filteredTasks.map((task) => {
-  const expanded = isTaskExpanded(task.id)
+                  const expanded = isTaskExpanded(task.id)
 
-  return (
-    <article
-      key={task.id}
-      className={`rounded-[20px] border border-slate-200 p-4 transition lg:px-5 lg:py-3 ${getPriorityCardAccent(task.priority, task.completed)}`}
-    >
-      <div className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={() => toggleTask(task)}
-          className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm ${
-            task.completed
-              ? 'border-emerald-600 bg-emerald-600 text-white'
-              : 'border-slate-400 bg-white text-transparent'
-          }`}
-          aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
-        >
-          ✓
-        </button>
+                  return (
+                    <article
+                      key={task.id}
+                      className={`rounded-[20px] border border-slate-200 p-4 transition lg:px-5 lg:py-3 ${getPriorityCardAccent(task.priority, task.completed)}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleTask(task)}
+                          className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm ${
+                            task.completed
+                              ? 'border-emerald-600 bg-emerald-600 text-white'
+                              : 'border-slate-400 bg-white text-transparent'
+                          }`}
+                          aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
+                        >
+                          ✓
+                        </button>
 
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => toggleTaskExpanded(task.id)}
-            className="flex w-full items-center justify-between gap-3 text-left"
-            aria-expanded={expanded}
-          >
-            <h3
-              className={`min-w-0 flex-1 text-base font-semibold ${
-                task.completed ? 'text-slate-400 line-through' : 'text-slate-900'
-              }`}
-            >
-              {task.title}
-            </h3>
+                        <div className="min-w-0 flex-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleTaskExpanded(task.id)}
+                            className="flex w-full items-center justify-between gap-3 text-left"
+                            aria-expanded={expanded}
+                          >
+                            <h3
+                              className={`min-w-0 flex-1 text-base font-semibold ${
+                                task.completed ? 'text-slate-400 line-through' : 'text-slate-900'
+                              }`}
+                            >
+                              {task.title}
+                            </h3>
 
-            <div className="shrink-0 text-lg font-semibold text-slate-400">
-              {expanded ? '–' : '+'}
-            </div>
-          </button>
+                            <div className="shrink-0 text-lg font-semibold text-slate-400">
+                              {expanded ? '–' : '+'}
+                            </div>
+                          </button>
 
-          {expanded ? (
-            <div className="mt-3 space-y-3">
-              <div className={`text-sm ${task.completed ? 'text-slate-400' : 'text-slate-500'}`}>
-                {formatTaskMeta(task)}
-              </div>
+                          {expanded ? (
+                            <div className="mt-3 space-y-3">
+                              <div className={`text-sm ${task.completed ? 'text-slate-400' : 'text-slate-500'}`}>
+                                {formatTaskMeta(task)}
+                              </div>
 
-              {task.notes ? (
-                <p className={`text-sm ${task.completed ? 'text-slate-400' : 'text-slate-600'}`}>
-                  {task.notes}
-                </p>
-              ) : null}
+                              {task.notes ? (
+                                <p className={`text-sm ${task.completed ? 'text-slate-400' : 'text-slate-600'}`}>
+                                  {task.notes}
+                                </p>
+                              ) : null}
 
-              <div className="flex flex-wrap gap-2">
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${PRIORITY_STYLES[task.priority]}`}
-                >
-                  {task.priority} priority
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                  {task.list_name}
-                </span>
-              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <span
+                                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${PRIORITY_STYLES[task.priority]}`}
+                                >
+                                  {task.priority} priority
+                                </span>
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                                  {task.list_name}
+                                </span>
+                              </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => startEdit(task)}
-                  className="min-h-[40px] rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => deleteTask(task.id)}
-                  className="min-h-[40px] rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </article>
-  )
-}) 
+                              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(task)}
+                                  className="min-h-[40px] rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteTask(task.id)}
+                                  className="min-h-[40px] rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })
+              )}
             </div>
           ) : (
             <div className="mt-5">
