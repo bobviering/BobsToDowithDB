@@ -716,11 +716,11 @@ className="rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none 
               <button
                 type="button"
                 onClick={() => setShowCompleted((prev) => !prev)}
-className={`rounded-2xl border px-3 py-2 text-sm font-medium outline-none transition xl:px-3 xl:py-1.5 xl:text-sm xl:w-auto xl:whitespace-nowrap ${
+className={`rounded-2xl border px-3 py-2 text-sm font-medium outline-none transition lg:px-2.5 lg:py-1.5 lg:text-sm lg:w-auto lg:whitespace-nowrap ${
   showCompleted
-                    ? 'border-slate-900 bg-slate-900 text-white'
-                    : 'border-slate-300 bg-white text-slate-700'
-                }`}
+    ? 'border-slate-900 bg-slate-900 text-white'
+    : 'border-slate-300 bg-white text-slate-700'
+}`}
               >
                 {showCompleted ? 'Hide completed' : 'Show completed'}
               </button>
