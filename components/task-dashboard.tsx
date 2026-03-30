@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 type Priority = 'High' | 'Medium' | 'Low'
-type PresetList = 'Home' | 'Work' | 'Personal' | 'Errands' | 'Health' | 'Finance' | 'Other'
+type PresetList = 'Home' | 'Work' | 'Other'
 type SortMode = 'date' | 'priority' | 'list'
 type ViewMode = 'list' | 'calendar'
 
